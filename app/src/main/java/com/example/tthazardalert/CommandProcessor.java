@@ -6,6 +6,20 @@ import android.content.Context;
 public class CommandProcessor {
 
     public static void handle(Context c, final String from, String body) {
+        // Prevent processing automated replies sent by the app itself to avoid infinite feedback loops
+        if (body.startsWith("UNKNOWN") ||
+            body.startsWith("SUBSCRIBED") ||
+            body.startsWith("YOU HAVE") ||
+            body.startsWith("THANKS") ||
+            body.startsWith("NO ") ||
+            body.startsWith("LATEST") ||
+            body.startsWith("COMMANDS") ||
+            body.startsWith("ALERT") ||
+            body.startsWith("NOT") ||
+            body.startsWith("USE:")) {
+            return;
+        }
+
         DataStore ds = DataStore.get();
         ds.ensureLoaded(c);
 
@@ -27,7 +41,7 @@ public class CommandProcessor {
             }
 
             case "UNSUBSCRIBE":
-                ds.subscribers.removeIf(x -> x.getPhone().equals(from));
+                ds.subscribers.removeIf(x -> DataStore.samePhone(x.getPhone(), from));
                 reply = "You have been unsubscribed.";
                 break;
 

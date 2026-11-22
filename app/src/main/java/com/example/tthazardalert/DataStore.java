@@ -9,7 +9,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
-// Holds the lists in memory and saves/loads them using the Objects in Files pattern.
+// Holds the lists in memory and saves/loads them using the Objects in Files pattern with thread synchronization.
 public class DataStore {
     private static final String TAG = "HazardApp";
     private static final String FILENAME = "hazard_data.dat";
@@ -19,13 +19,13 @@ public class DataStore {
     public ArrayList<Alert> alerts = new ArrayList<>();
     private boolean loaded = false;
 
-    public static DataStore get() {
+    public static synchronized DataStore get() {
         if (instance == null) instance = new DataStore();
         return instance;
     }
 
     // Needed because SmsReceiver can run when no Activity has loaded the file yet.
-    public void ensureLoaded(Context context) {
+    public synchronized void ensureLoaded(Context context) {
         if (!loaded) load(context);
     }
 
@@ -34,17 +34,19 @@ public class DataStore {
         String x = a.replaceAll("\\D", "");
         String y = b.replaceAll("\\D", "");
         if (x.isEmpty() || y.isEmpty()) return false;
-        int n = Math.min(7, Math.min(x.length(), y.length()));
+        if (x.equals(y)) return true;
+        int n = Math.min(10, Math.min(x.length(), y.length()));
         return x.substring(x.length() - n).equals(y.substring(y.length() - n));
     }
-    public Subscriber find(String phone) {
+
+    public synchronized Subscriber find(String phone) {
         for (Subscriber s : subscribers) {
             if (samePhone(s.getPhone(), phone)) return s;
         }
         return null;
     }
 
-    public void save(Context context) {
+    public synchronized void save(Context context) {
         try (FileOutputStream fout = context.openFileOutput(FILENAME, Context.MODE_PRIVATE);
              ObjectOutputStream oos = new ObjectOutputStream(fout)) {
 
@@ -59,7 +61,7 @@ public class DataStore {
         }
     }
 
-    public void load(Context context) {
+    public synchronized void load(Context context) {
         try (FileInputStream fin = context.openFileInput(FILENAME);
              ObjectInputStream ois = new ObjectInputStream(fin)) {
 
@@ -77,4 +79,5 @@ public class DataStore {
         loaded = true;
     }
 }
+
 
